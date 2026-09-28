@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ผจญภัยป่าเวทมนตร์ (Math Adventure)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Itim&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Itim', 'Fredoka', cursive, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Top HUD Header */
+        #game-hud {
+            position: absolute;
+            top: env(safe-area-inset-top, 10px);
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .hud-left-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        #creator-logo {
+            width: clamp(32px, 6vw, 42px);
+            height: clamp(32px, 6vw, 42px);
+            border-radius: 8px;
+            border: 2px solid #ffe600;
+            box-shadow: 0 0 8px #ffe600;
+            background: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #sound-toggle {
+            width: clamp(32px, 6vw, 42px);
+            height: clamp(32px, 6vw, 42px);
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: #fff;
+            font-size: clamp(14px, 3.5vw, 18px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-stats {
+            display: flex;
+            gap: 6px;
+        }
+
+        .hud-box {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #ffe600;
+            border-radius: 8px;
+            padding: 4px 10px;
+            color: #ffffff;
+            font-size: clamp(0.75rem, 2vw, 1rem);
+            font-weight: bold;
+            white-space: nowrap;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* Question Banner (Top Center) */
+        #question-panel {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 10px) + 45px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(92%, 600px);
+            background: rgba(0, 10, 25, 0.92);
+            border: 2px solid #00f0ff;
+            border-radius: 12px;
+            padding: 6px 14px;
+            color: #fff;
+            text-align: center;
+            z-index: 45;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0,240,255,0.3);
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        #question-text {
+            font-size: clamp(0.8rem, 2.2vw, 1rem);
+            color: #ffffff;
+            text-shadow: 1px 1px 3px #000;
+            font-weight: 600;
+        }
+
+        /* Control UI Overlay */
+        #ui-controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        /* Joystick Control Zone (ฝั่งขวาล่าง) */
+        #joystick-zone {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 45vw;
+            height: 50vh;
+            pointer-events: auto;
+            z-index: 40;
+            touch-action: none;
+        }
+
+        #joystick-base {
+            position: absolute;
+            width: min(110px, 25vw);
+            height: min(110px, 25vw);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            display: none;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 41;
+        }
+
+        #joystick-stick {
+            position: absolute;
+            width: 45%;
+            height: 45%;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffe600 0%, #ff9900 100%);
+            border: 2px solid #fff;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Center Bottom Zone (รวม ตะกร้า + ปุ่มใส่/หยิบ/โยนทิ้ง) */
+        #center-bottom-group {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom, 10px) + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 45;
+            pointer-events: auto;
+            width: max-content;
+        }
+
+        /* Baskets Display */
+        #baskets-overlay {
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.8);
+            border: 1.5px solid rgba(255,255,255,0.3);
+            padding: 6px 14px;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .basket-item-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #ffe600;
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            font-weight: bold;
+        }
+
+        /* Action Buttons Area Below Basket */
+        .basket-action-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+            font-family: 'Itim', cursive;
+            color: #fff;
+            background: linear-gradient(180deg, #00c6ff 0%, #0072ff 100%);
+            border: 1.5px solid #fff;
+            border-radius: 8px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+            touch-action: manipulation;
+            white-space: nowrap;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-action:active { transform: scale(0.95); }
+
+        .btn-flag {
+            background: linear-gradient(180deg, #ff0055 0%, #ff5500 100%);
+        }
+
+        .choices-container {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-choice {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+            background: #222;
+            color: #fff;
+            font-size: clamp(0.7rem, 1.6vw, 0.85rem);
+            font-family: 'Itim', cursive;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+
+        .btn-choice.selected {
+            background: #ffe600;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Start Screen Overlay */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.85);
+        }
+
+        .screen.active { display: flex; }
+
+        #start-screen {
+            background: url('./a1.jpeg') no-repeat center center / cover;
+            padding: 15px;
+        }
+
+        .start-card {
+            background: rgba(0, 10, 20, 0.92);
+            border: 2px solid #00f0ff;
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0,240,255,0.4);
+        }
+
+        .game-title {
+            font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+            color: #fff;
+            text-shadow: 0 0 10px #ff007f;
+            margin-bottom: 4px;
+        }
+
+        .game-subtitle {
+            font-size: clamp(0.9rem, 3vw, 1.2rem);
+            color: #ffe600;
+            margin-bottom: 12px;
+        }
+
+        .rules-box {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            color: #eee;
+            font-size: clamp(0.8rem, 2vw, 0.95rem);
+            text-align: left;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .btn-start {
+            padding: 8px 28px;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            font-family: 'Itim', cursive;
+            color: #fff;
+            background: linear-gradient(180deg, #ff9900 0%, #ff5500 100%);
+            border: 2px solid #fff;
+            border-radius: 40px;
+            box-shadow: 0 0 12px #ff9900;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="canvas-wrapper">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- Top Navigation HUD -->
+    <div id="game-hud" style="display: none;">
+        <div class="hud-left-group">
+            <div id="creator-logo">
+                <img src="./a.png" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">
+            </div>
+            <button id="sound-toggle">🔊</button>
+        </div>
+        <div class="hud-stats">
+            <div class="hud-box" id="hud-level">ด่านที่: 1</div>
+            <div class="hud-box" id="hud-lives">❤️❤️❤️</div>
+        </div>
+    </div>
+
+    <!-- Question Box -->
+    <div id="question-panel">
+        <div class="question-header">
+            <div id="question-text">โจทย์กำลังโหลด...</div>
+            <div class="choices-container" id="choices-box"></div>
+            <button class="btn-action btn-flag" id="btn-submit">ส่งตอบ 🚩</button>
+        </div>
+    </div>
+
+    <!-- Center Bottom Zone: Baskets + Actions -->
+    <div id="center-bottom-group" style="display: none;">
+        <div id="baskets-overlay"></div>
+        <div class="basket-action-row">
+            <button class="btn-action" id="btn-put">ใส่ 🧺</button>
+            <button class="btn-action" id="btn-take">หยิบออก 🧺↩️</button>
+            <button class="btn-action" id="btn-drop">โยนทิ้ง 🍃</button>
+        </div>
+    </div>
+
+    <!-- In-Game Controls -->
+    <div id="ui-controls" style="display: none;">
+        <!-- Joystick Zone (Right Bottom) -->
+        <div id="joystick-zone"></div>
+        <div id="joystick-base">
+            <div id="joystick-stick"></div>
+        </div>
+    </div>
+
+    <!-- Start Overlay -->
+    <div id="start-screen" class="screen active">
+        <div class="start-card">
+            <h1 class="game-title">ผจญภัยป่าเวทมนตร์</h1>
+            <div class="game-subtitle">เกมนับจำนวนทีละ 2 และ 5</div>
+            
+            <div class="rules-box">
+                📜 <b>วิธีเล่น:</b><br>
+                • **เลื่อนทิศทาง:** แตะลากจอยสติ๊กฝั่งขวาล่าง<br>
+                • **ซูมเข้า/ออก:** ใช้นิ้ว 2 นิ้วหนีบหรือถ่างที่บริเวณว่างของจอ<br>
+                • **ระวังตัวร้าย:** ตัวร้ายเคลื่อนที่ได้ และสุ่มยิงลูกไฟ 🔥
+            </div>
+
+            <button class="btn-start" onclick="startGame()">เริ่มเล่น 🎮</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    class SoundEngine {
+        constructor() { this.ctx = null; this.muted = false; }
+        init() {
+            if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+        }
+        playTone(freq, type, duration) {
+            if (this.muted || !this.ctx) return;
+            try {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch(e){}
+        }
+        playCorrect() { this.playTone(523.25, 'sine', 0.15); setTimeout(() => this.playTone(783.99, 'sine', 0.3), 150); }
+        playWrong() { this.playTone(200, 'sawtooth', 0.2); }
+        playHit() { this.playTone(150, 'square', 0.25); }
+    }
+
+    const audio = new SoundEngine();
+    document.getElementById('sound-toggle').addEventListener('click', () => {
+        audio.init();
+        audio.muted = !audio.muted;
+        document.getElementById('sound-toggle').innerText = audio.muted ? '🔇' : '🔊';
+    });
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const bgStart = new Image(); 
+    bgStart.src = './a2.jpeg';
+
+    let currentMode = 'START';
+    let currentLevel = 1;
+    let lives = 3;
+    let invulnerableTimer = 0;
+    let selectedCountChoice = null;
+
+    // Fixed Virtual World Scale
+    const WORLD_WIDTH = 1200;
+    const WORLD_HEIGHT = 700;
+
+    let userZoomScale = 1.0;
+    let initialPinchDist = null;
+
+    const player = {
+        x: 200,
+        y: 350,
+        size: 50,
+        speed: 6,
+        vx: 0,
+        vy: 0,
+        heldItem: null
+    };
+
+    // Villain Setup with AI & Fireball logic
+    const villain = {
+        x: 800,
+        y: 350,
+        size: 50,
+        speed: 2.2,
+        vx: 0,
+        vy: 0,
+        shootCooldown: 0,
+        changeDirCooldown: 0,
+        active: true
+    };
+
+    let fireballs = [];
+
+    const ITEM_EMOJI_POOL = [
+        { emoji: '🍄', name: 'เห็ด' }, { emoji: '🍎', name: 'แอปเปิ้ล' },
+        { emoji: '🥕', name: 'แครอท' }, { emoji: '🌽', name: 'ข้าวโพด' },
+        { emoji: '🍓', name: 'สตรอว์เบอร์รี' }
+    ];
+
+    let currentQuestion = null;
+    let itemsOnGround = [];
+    let baskets = [];
+
+    function updateCanvasSize() {
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        const baseScale = Math.min(windowWidth / WORLD_WIDTH, windowHeight / WORLD_HEIGHT);
+        const finalScale = baseScale * userZoomScale;
+
+        canvas.width = WORLD_WIDTH * finalScale;
+        canvas.height = WORLD_HEIGHT * finalScale;
+
+        ctx.scale(finalScale, finalScale);
+    }
+
+    window.addEventListener('resize', updateCanvasSize);
+    updateCanvasSize();
+
+    // Isolated Pinch Zoom Engine (ป้องกันชนกับ Joystick)
+    window.addEventListener('touchstart', (e) => {
+        // หากมีการแตะจอยสติ๊กอยู่ จะไม่อนุญาตให้เริ่มซูมเพื่อป้องกันการชนกัน
+        if (e.touches.length === 2 && touchId === null) {
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+
+            // ตรวจสอบว่านิ้วไม่ได้กดอยู่ในฝั่ง Joystick Zone
+            const joyRect = joyZone.getBoundingClientRect();
+            const inJoy1 = t1.clientX >= joyRect.left && t1.clientY >= joyRect.top;
+            const inJoy2 = t2.clientX >= joyRect.left && t2.clientY >= joyRect.top;
+
+            if (!inJoy1 && !inJoy2) {
+                initialPinchDist = Math.hypot(
+                    t1.clientX - t2.clientX,
+                    t1.clientY - t2.clientY
+                );
+            }
+        }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDist && touchId === null) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const factor = currentDist / initialPinchDist;
+            userZoomScale = Math.min(Math.max(userZoomScale * factor, 0.7), 1.8);
+            initialPinchDist = currentDist;
+            updateCanvasSize();
+        }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) initialPinchDist = null;
+    });
+
+    // Joystick Control Logic (Isolated Touch)
+    const joyZone = document.getElementById('joystick-zone');
+    const joyBase = document.getElementById('joystick-base');
+    const joyStick = document.getElementById('joystick-stick');
+    let touchId = null;
+    let joyCenter = { x: 0, y: 0 };
+
+    joyZone.addEventListener('touchstart', (e) => {
+        if (touchId !== null) return;
+        
+        // ถ้านิ้วใดนิ้วหนึ่งแตะโซนนี้ จะดักจับเพื่อใช้คุมจอยทันที
+        const touch = e.changedTouches[0];
+        touchId = touch.identifier;
+        initialPinchDist = null; // ยกเลิกการซูมทันทีถ้าแตะควบคุมจอย
+        
+        joyCenter = { x: touch.clientX, y: touch.clientY };
+        joyBase.style.left = `${joyCenter.x}px`;
+        joyBase.style.top = `${joyCenter.y}px`;
+        joyBase.style.display = 'block';
+        joyStick.style.transform = `translate(-50%, -50%)`;
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (touchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === touchId) {
+                const touch = e.changedTouches[i];
+                const dx = touch.clientX - joyCenter.x;
+                const dy = touch.clientY - joyCenter.y;
+                const dist = Math.hypot(dx, dy);
+                const angle = Math.atan2(dy, dx);
+
+                const maxR = joyBase.offsetWidth / 2;
+                const moveDist = Math.min(dist, maxR);
+                const stickX = Math.cos(angle) * moveDist;
+                const stickY = Math.sin(angle) * moveDist;
+
+                joyStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+
+                const intensity = moveDist / maxR;
+                player.vx = Math.cos(angle) * player.speed * intensity;
+                player.vy = Math.sin(angle) * player.speed * intensity;
+            }
+        }
+    }, { passive: false });
+
+    const resetJoystick = (e) => {
+        if (touchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === touchId) {
+                touchId = null;
+                joyBase.style.display = 'none';
+                player.vx = 0;
+                player.vy = 0;
+            }
+        }
+    };
+
+    window.addEventListener('touchend', resetJoystick);
+    window.addEventListener('touchcancel', resetJoystick);
+
+    // Keyboard Controls
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    function startGame() {
+        audio.init();
+        document.getElementById('start-screen').classList.remove('active');
+        document.getElementById('ui-controls').style.display = 'block';
+        document.getElementById('center-bottom-group').style.display = 'flex';
+        currentLevel = 1;
+        lives = 3;
+        updateLivesDisplay();
+        enterLevel(currentLevel);
+        requestAnimationFrame(gameLoop);
+    }
+
+    function updateLivesDisplay() {
+        document.getElementById('hud-lives').innerText = '❤️'.repeat(Math.max(0, lives));
+    }
+
+    function enterLevel(levelNum) {
+        currentLevel = levelNum;
+        currentMode = 'GAME';
+        document.getElementById('game-hud').style.display = 'flex';
+        document.getElementById('hud-level').innerText = `ด่านที่: ${currentLevel}`;
+
+        const countType = Math.random() > 0.5 ? 2 : 5;
+        const basketCount = 3;
+        const targetObj = ITEM_EMOJI_POOL[Math.floor(Math.random() * ITEM_EMOJI_POOL.length)];
+
+        currentQuestion = {
+            text: `เก็บ ${targetObj.name} ${targetObj.emoji} ใส่ ${basketCount} ตะกร้า ใบละ ${countType} ชิ้น`,
+            basketsNeeded: basketCount,
+            perBasket: countType,
+            totalTarget: basketCount * countType,
+            targetEmoji: targetObj.emoji
+        };
+
+        document.getElementById('question-panel').style.display = 'block';
+        document.getElementById('question-text').innerText = currentQuestion.text;
+
+        const choicesBox = document.getElementById('choices-box');
+        choicesBox.innerHTML = '';
+        selectedCountChoice = null;
+        [currentQuestion.totalTarget, currentQuestion.totalTarget + countType].sort(() => Math.random() - 0.5).forEach(val => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-choice';
+            btn.innerText = `รวม ${val}`;
+            btn.onclick = () => {
+                document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedCountChoice = val;
+            };
+            choicesBox.appendChild(btn);
+        });
+
+        baskets = Array.from({ length: basketCount }, (_, i) => ({ id: i + 1, items: [] }));
+        renderBasketsUI();
+
+        itemsOnGround = [];
+        for(let i=0; i < currentQuestion.totalTarget + 2; i++) {
+            itemsOnGround.push({
+                emoji: currentQuestion.targetEmoji,
+                x: 100 + Math.random() * (WORLD_WIDTH - 200),
+                y: 120 + Math.random() * (WORLD_HEIGHT - 240),
+                size: 40
+            });
+        }
+
+        fireballs = [];
+        villain.x = 800;
+        villain.y = 350;
+    }
+
+    function renderBasketsUI() {
+        const overlay = document.getElementById('baskets-overlay');
+        overlay.innerHTML = '';
+        baskets.forEach((b, idx) => {
+            const bDiv = document.createElement('div');
+            bDiv.className = 'basket-item-ui';
+            bDiv.innerHTML = `<div>ใบที่ ${idx + 1} 🧺</div><div>${b.items.join('') || 'ว่าง'}</div>`;
+            overlay.appendChild(bDiv);
+        });
+    }
+
+    document.getElementById('btn-put').onclick = () => {
+        if (!player.heldItem) return;
+        for(let b of baskets) {
+            if (b.items.length < currentQuestion.perBasket) {
+                b.items.push(player.heldItem);
+                player.heldItem = null;
+                renderBasketsUI();
+                return;
+            }
+        }
+    };
+
+    document.getElementById('btn-take').onclick = () => {
+        if (player.heldItem) return;
+        for (let i = baskets.length - 1; i >= 0; i--) {
+            if (baskets[i].items.length > 0) {
+                player.heldItem = baskets[i].items.pop();
+                renderBasketsUI();
+                return;
+            }
+        }
+    };
+
+    document.getElementById('btn-drop').onclick = () => player.heldItem = null;
+
+    document.getElementById('btn-submit').onclick = () => {
+        let total = baskets.reduce((sum, b) => sum + b.items.length, 0);
+        if (total === currentQuestion.totalTarget && selectedCountChoice === currentQuestion.totalTarget) {
+            audio.playCorrect();
+            alert("✨ ถูกต้อง! ผ่านด่าน");
+            enterLevel(currentLevel + 1);
+        } else {
+            audio.playWrong();
+            alert("❌ ยังไม่ถูกต้อง ลองใหม่อีกครั้ง!");
+        }
+    };
+
+    function takeDamage() {
+        if (invulnerableTimer > 0) return;
+        lives--;
+        invulnerableTimer = 90;
+        audio.playHit();
+        updateLivesDisplay();
+
+        if (lives <= 0) {
+            alert("💥 คุณเสียพลังชีวิตทั้งหมด! เริ่มต้นด่านใหม่");
+            startGame();
+        }
+    }
+
+    function updateMovement() {
+        if (invulnerableTimer > 0) invulnerableTimer--;
+
+        // Player Movement
+        let kx = 0, ky = 0;
+        if (keys['ArrowUp'] || keys['w']) ky -= player.speed;
+        if (keys['ArrowDown'] || keys['s']) ky += player.speed;
+        if (keys['ArrowLeft'] || keys['a']) kx -= player.speed;
+        if (keys['ArrowRight'] || keys['d']) kx += player.speed;
+
+        const mx = player.vx || kx;
+        const my = player.vy || ky;
+
+        player.x = Math.max(40, Math.min(WORLD_WIDTH - 40, player.x + mx));
+        player.y = Math.max(40, Math.min(WORLD_HEIGHT - 40, player.y + my));
+
+        // Villain AI Movement Logic
+        const distToPlayer = Math.hypot(player.x - villain.x, player.y - villain.y);
+        
+        if (distToPlayer < 350) {
+            const angle = Math.atan2(player.y - villain.y, player.x - villain.x);
+            villain.vx = Math.cos(angle) * villain.speed;
+            villain.vy = Math.sin(angle) * villain.speed;
+        } else {
+            villain.changeDirCooldown--;
+            if (villain.changeDirCooldown <= 0) {
+                const randAngle = Math.random() * Math.PI * 2;
+                villain.vx = Math.cos(randAngle) * (villain.speed * 0.8);
+                villain.vy = Math.sin(randAngle) * (villain.speed * 0.8);
+                villain.changeDirCooldown = 60 + Math.random() * 90;
+            }
+        }
+
+        villain.x = Math.max(50, Math.min(WORLD_WIDTH - 50, villain.x + villain.vx));
+        villain.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, villain.y + villain.vy));
+
+        // Villain Shoot Fireball Logic
+        villain.shootCooldown--;
+        if (villain.shootCooldown <= 0 && villain.active) {
+            villain.shootCooldown = 90 + Math.random() * 60;
+            
+            const baseAngle = Math.atan2(player.y - villain.y, player.x - villain.x);
+            const spread = (Math.random() - 0.5) * 0.5;
+            const finalAngle = baseAngle + spread;
+
+            fireballs.push({
+                x: villain.x,
+                y: villain.y,
+                vx: Math.cos(finalAngle) * 4.5,
+                vy: Math.sin(finalAngle) * 4.5,
+                size: 26
+            });
+        }
+
+        // Update Fireballs Positions
+        fireballs.forEach((fb, idx) => {
+            fb.x += fb.vx;
+            fb.y += fb.vy;
+
+            // Check Hit Player
+            if (Math.hypot(player.x - fb.x, player.y - fb.y) < (player.size / 2 + fb.size / 2)) {
+                takeDamage();
+                fireballs.splice(idx, 1);
+            }
+        });
+
+        // Remove Offscreen Fireballs
+        fireballs = fireballs.filter(fb => fb.x >= 0 && fb.x <= WORLD_WIDTH && fb.y >= 0 && fb.y <= WORLD_HEIGHT);
+
+        // Check Villain Body Touch Player
+        if (Math.hypot(player.x - villain.x, player.y - villain.y) < player.size / 1.2) {
+            takeDamage();
+        }
+
+        // Auto Pick Item
+        itemsOnGround.forEach((it, idx) => {
+            if (!player.heldItem && Math.hypot(player.x - it.x, player.y - it.y) < player.size / 1.2) {
+                player.heldItem = it.emoji;
+                itemsOnGround.splice(idx, 1);
+            }
+        });
+    }
+
+    function render() {
+        if (currentMode !== 'GAME') return;
+
+        // Background
+        if (bgStart.complete && bgStart.naturalWidth !== 0) {
+            ctx.drawImage(bgStart, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        } else {
+            ctx.fillStyle = '#0f291e';
+            ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        }
+
+        ctx.fillStyle = 'rgba(0, 10, 5, 0.45)';
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+        // Render Fireballs
+        fireballs.forEach(fb => {
+            ctx.font = `${fb.size}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🔥', fb.x, fb.y);
+        });
+
+        // Depth Sorting System
+        const renderList = [];
+        itemsOnGround.forEach(it => renderList.push({ type: 'item', y: it.y, obj: it }));
+        if (villain.active) renderList.push({ type: 'villain', y: villain.y, obj: villain });
+        renderList.push({ type: 'player', y: player.y + 1000, obj: player });
+
+        renderList.sort((a, b) => a.y - b.y);
+
+        renderList.forEach(node => {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 6;
+
+            if (node.type === 'item') {
+                ctx.font = `${node.obj.size}px serif`;
+                ctx.fillText(node.obj.emoji, node.obj.x, node.obj.y);
+            } else if (node.type === 'villain') {
+                ctx.font = `${node.obj.size}px serif`;
+                ctx.fillText('🦹', node.obj.x, node.obj.y);
+            } else if (node.type === 'player') {
+                if (invulnerableTimer % 10 < 5) {
+                    ctx.font = `${node.obj.size}px serif`;
+                    ctx.fillText('👩‍🌾', node.obj.x, node.obj.y);
+
+                    if (node.obj.heldItem) {
+                        ctx.font = '24px serif';
+                        ctx.fillText(node.obj.heldItem, node.obj.x + 20, node.obj.y - 25);
+                    }
+                }
+            }
+
+            ctx.shadowBlur = 0;
+        });
+    }
+
+    function gameLoop() {
+        updateMovement();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+</script>
+</body>
+</html>
